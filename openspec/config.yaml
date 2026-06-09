@@ -44,7 +44,7 @@ context: |
               ├── rest/<domain_name>/
               │   ├── <Resource>.java        # REST controller
               │   ├── <Mapper>.java          # MapStruct (DTO ↔ domain)
-              │   └── <Dto>.java             # Request/response DTOs
+              │   └── <Dto>.java             # Request/response DTOs (records)
               └── messaging/<domain_name>/
                   ├── <Consumer>.java        # Event consumer
                   ├── <Event>.java           # Inbound event (record)
@@ -114,8 +114,13 @@ rules:
       runtime-only) — do not describe changes as Modulith modules.
   design:
     - Place each new file in the hexagonal layout (domain/<domain_name>/ or
-      infra/{spi,api}/<technology>/<domain_name>/); list the concrete file paths and
-      confirm dependencies flow inward (infra → domain, never domain → infra).
+      infra/{spi,api}/<technology>/<domain_name>/); enumerate every concrete
+      src/.../*.java path inline in the design body (a separate planned-files list does
+      not by itself satisfy this), and confirm dependencies flow inward (infra →
+      domain, never domain → infra).
+    - Declare every domain object, persistence entity, event payload, AND
+      request/response DTO as a Java record in that file list; note any class-instead-of
+      -record with a documented reason (e.g. required mutability or a framework constraint).
     - Note null-safety implications; all new packages need @NullMarked package-info.java.
       For non-trivial nullness decisions, apply the jspecify-* skill that matches the
       decision: jspecify-user-guide for annotation placement (params/returns/generics/
