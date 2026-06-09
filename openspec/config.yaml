@@ -14,7 +14,64 @@ context: |
     - Mapping/boilerplate: MapStruct 1.7, Lombok (with lombok-mapstruct-binding)
     - Observability: Spring Boot Actuator + OpenTelemetry, Spring Modulith
       observability; Grafana OTel-LGTM stack via Testcontainers in tests
-    - Testing: JUnit 5, Spring Boot Test, Testcontainers (PostgreSQL + Grafana LGTM)
+    - Testing: JUnit Jupiter (Boot 4 ships JUnit 6), Spring Boot Test with
+      @AutoConfigureMockMvc + MockMvcTester, Testcontainers (PostgreSQL + Grafana
+      LGTM); integration tests are preferred. Every environment (dev, test, CI, prod)
+      uses PostgreSQL — H2 and other in-memory databases are prohibited.
+
+  Architecture & package layout:
+    - Hexagonal (Ports & Adapters). Production code under
+      src/main/java/dev/abbah/bookstore/ MUST be organized into two layers,
+      domain/ and infra/:
+
+      src/main/java/dev/abbah/bookstore/
+      ├── domain/
+      │   └── <domain_name>/
+      │       ├── <Domain>.java              # Domain object (record)
+      │       ├── <UseCase>.java             # Business logic (@Service)
+      │       └── <Port>.java                # Port interface (driven)
+      └── infra/
+          ├── spi/                           # Driven adapters (outbound)
+          │   ├── db/<domain_name>/
+          │   │   ├── <Entity>.java          # Persistence entity (record)
+          │   │   ├── <Mapper>.java          # MapStruct (entity ↔ domain)
+          │   │   └── <Adapter>.java         # Implements Port
+          │   └── messaging/<domain_name>/
+          │       ├── <Producer>.java        # Event producer (implements Port)
+          │       ├── <Event>.java           # Outbound event (record)
+          │       └── <Mapper>.java          # MapStruct (event ↔ domain)
+          └── api/                           # Driving adapters (inbound)
+              ├── rest/<domain_name>/
+              │   ├── <Resource>.java        # REST controller
+              │   ├── <Mapper>.java          # MapStruct (DTO ↔ domain)
+              │   └── <Dto>.java             # Request/response DTOs
+              └── messaging/<domain_name>/
+                  ├── <Consumer>.java        # Event consumer
+                  ├── <Event>.java           # Inbound event (record)
+                  └── <Mapper>.java          # MapStruct (event ↔ domain)
+
+    - Domain (domain/<domain_name>/): pure business logic, no infrastructure
+      dependencies. Each domain package contains <Domain>.java (Java record when
+      possible), <UseCase>.java (business logic, @Service), and <Port>.java
+      (driven/outbound port interface).
+    - Infra (infra/): all infrastructure adapters, split by direction. New adapter
+      technologies MUST follow infra/spi/<technology>/<domain_name>/ (driven/outbound)
+      or infra/api/<protocol>/<domain_name>/ (driving/inbound):
+        - infra/spi/db/<domain_name>/ — database (outbound): <Entity>.java (record),
+          <Mapper>.java (MapStruct entity ↔ domain), <Adapter>.java implementing the Port.
+        - infra/spi/messaging/<domain_name>/ — messaging producer (outbound, e.g. Kafka):
+          <Producer>.java implementing the Port, <Event>.java (outbound payload record),
+          <Mapper>.java (event ↔ domain).
+        - infra/api/rest/<domain_name>/ — REST (inbound): <Resource>.java (controller),
+          <Mapper>.java (DTO ↔ domain), <Dto>.java (request/response DTOs).
+        - infra/api/messaging/<domain_name>/ — messaging consumer (inbound, e.g. Kafka):
+          <Consumer>.java (driving adapter), <Event>.java (inbound payload record),
+          <Mapper>.java (event ↔ domain).
+    - <domain_name> MUST be the feature domain name in lowercase (e.g. checklist).
+    - Dependencies MUST flow inward (infra → domain); the domain layer MUST NEVER
+      import from infra.
+    - Cross-layer object mapping uses MapStruct (Spring component model); domain
+      objects, entities, DTOs, and event payloads are Java records when possible.
 
   Conventions:
     - Conventional Commits (e.g. build:, chore:, feat:, fix:).
@@ -29,8 +86,9 @@ context: |
       jspecify-spring-framework-patterns (Spring @Contract post-conditions and the
       @Nullable vs @SuppressWarnings("NullAway.Init") inference heuristics).
     - Indentation is 2 spaces.
-    - Organize features as Spring Modulith application modules (one top-level package
-      per module under dev.abbah.bookstore); respect module boundaries.
+    - Organize production code by the hexagonal layout above (domain/ + infra/), not
+      by feature-rooted Modulith packages; Spring Modulith stays for runtime
+      observability/actuator, not feature packaging.
     - Prefer Spring Data JDBC aggregates and repositories; schema changes go through
       Flyway versioned migrations.
     - When designing or implementing backend code (REST APIs, services, data access,
@@ -48,6 +106,9 @@ rules:
   proposal:
     - State which Spring Modulith module(s) the change touches, or that it adds a new one.
   design:
+    - Place each new file in the hexagonal layout (domain/<domain_name>/ or
+      infra/{spi,api}/<technology>/<domain_name>/); list the concrete file paths and
+      confirm dependencies flow inward (infra → domain, never domain → infra).
     - Note null-safety implications; all new packages need @NullMarked package-info.java.
       For non-trivial nullness decisions, apply the jspecify-* skills (jspecify-user-guide,
       jspecify-spring-null-safety, jspecify-spring-framework-patterns).
