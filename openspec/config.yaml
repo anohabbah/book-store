@@ -87,6 +87,9 @@ context: |
       generics/arrays), jspecify-spring-null-safety and
       jspecify-spring-framework-patterns (Spring @Contract post-conditions and the
       @Nullable vs @SuppressWarnings("NullAway.Init") inference heuristics).
+      jspecify-spring-framework-patterns applies whenever an entity/aggregate has a
+      database-generated id or any field populated after construction — that triggers a
+      @Nullable-vs-@SuppressWarnings("NullAway.Init") decision independently of @Contract.
     - Indentation is 2 spaces.
     - Organize production code by the hexagonal layout above (domain/ + infra/), not
       by feature-rooted Modulith packages; Spring Modulith stays for runtime
@@ -125,8 +128,11 @@ rules:
       For non-trivial nullness decisions, apply the jspecify-* skill that matches the
       decision: jspecify-user-guide for annotation placement (params/returns/generics/
       arrays); jspecify-spring-null-safety / jspecify-spring-framework-patterns when
-      Spring @Contract or @Nullable-vs-@SuppressWarnings inference is involved. Cite
-      only the skill(s) actually used.
+      Spring @Contract or @Nullable-vs-@SuppressWarnings inference is involved. Citing
+      jspecify-spring-framework-patterns is required whenever an entity/aggregate has a
+      database-generated id or any field populated after construction (decide @Nullable
+      vs @SuppressWarnings("NullAway.Init") explicitly); absence of @Contract does NOT by
+      itself make the Spring jspecify skills inapplicable. Cite only the skill(s) actually used.
     - Call out any new Flyway migration (named as the next available V<N>__ after the
       highest existing migration) and the database tables/columns it adds; apply
       postgres-patterns / supabase-postgres-best-practices to schema and indexing
@@ -138,14 +144,23 @@ rules:
     - When a task adds or annotates null-safe code, first consult the jspecify-* skill
       that fits before placing @Nullable/@NonNull/@Contract: jspecify-user-guide for
       annotation placement; jspecify-spring-null-safety / jspecify-spring-framework-patterns
-      for Spring @Contract and inference heuristics. Cite only the skill(s) actually used.
-    - When a task null-marks a whole package, structure it as a NullAway-verified loop:
-      annotate the package with JSpecify + @Contract guided by the jspecify-* skills (all
-      three apply for whole-package work) → run ./gradlew build → resolve each NullAway
-      error by correct annotation or real null handling (use @SuppressWarnings only with a
-      documented justification, never to silence the error count) → repeat until zero
-      NullAway errors. Keep fixes within the target package; note (do not silently mutate)
-      dependencies whose nullness is wrong.
+      for Spring @Contract and inference heuristics — and required when an entity/aggregate
+      has a database-generated id or a field populated after construction (the @Nullable
+      vs @SuppressWarnings("NullAway.Init") decision applies even without @Contract). Cite
+      only the skill(s) actually used.
+    - When a task null-marks a whole package, structure it as a NullAway-verified loop
+      and state EACH step in the task:
+        (a) annotate with JSpecify + @Contract guided by the jspecify-* skills (all three
+            apply for whole-package work);
+        (b) run ./gradlew build;
+        (c) fix each NullAway error by correct annotation or real null handling, using
+            @SuppressWarnings only with a documented justification and never to silence
+            the error count;
+        (d) repeat (b)-(c) until zero NullAway errors;
+        (e) keep every fix inside the target package;
+        (f) for any dependency whose nullness is wrong, note it explicitly and do not
+            silently mutate it.
+      Steps (e) and (f) are mandatory even when few errors occur.
     - When a task implements backend or database code, apply the matching skill first:
       springboot-patterns / springboot-security for Spring code, postgres-patterns /
       supabase-postgres-best-practices for SQL, schema, and migrations.
