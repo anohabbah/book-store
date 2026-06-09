@@ -1,3 +1,9 @@
 spring:
   application:
     name: book-store
+  mvc:
+    problemdetails:
+      enabled: true
+  threads:
+    virtual:
+      enabled: true
