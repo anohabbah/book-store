@@ -150,8 +150,8 @@ rules:
       only the skill(s) actually used.
     - When a task null-marks a whole package, structure it as a NullAway-verified loop
       and state EACH step in the task:
-        (a) annotate with JSpecify + @Contract guided by the jspecify-* skills (all three
-            apply for whole-package work);
+        (a) annotate with JSpecify + @Contract guided by the jspecify-* skills (cite only
+            the jspecify-* skills actually exercised — do not auto-cite all three);
         (b) run ./gradlew build;
         (c) fix each NullAway error by correct annotation or real null handling, using
             @SuppressWarnings only with a documented justification and never to silence
