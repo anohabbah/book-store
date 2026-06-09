@@ -23,6 +23,11 @@ context: |
       a package-info.java annotated @NullMarked (org.jspecify.annotations). Main
       types must be explicitly null-marked (RequireExplicitNullMarking). Use
       org.jspecify @Nullable/@NonNull — never JSR-305 or org.springframework.lang.
+      When writing or annotating null-safe code, consult the jspecify-* skills
+      first: jspecify-user-guide (where annotations belong on params/returns/
+      generics/arrays), jspecify-spring-null-safety and
+      jspecify-spring-framework-patterns (Spring @Contract post-conditions and the
+      @Nullable vs @SuppressWarnings("NullAway.Init") inference heuristics).
     - Indentation is 2 spaces.
     - Organize features as Spring Modulith application modules (one top-level package
       per module under dev.abbah.bookstore); respect module boundaries.
@@ -36,8 +41,12 @@ rules:
     - State which Spring Modulith module(s) the change touches, or that it adds a new one.
   design:
     - Note null-safety implications; all new packages need @NullMarked package-info.java.
+      For non-trivial nullness decisions, apply the jspecify-* skills (jspecify-user-guide,
+      jspecify-spring-null-safety, jspecify-spring-framework-patterns).
     - Call out any new Flyway migration and the database tables/columns it adds.
   tasks:
+    - When a task adds or annotates null-safe code, first consult the relevant jspecify-*
+      skill before placing @Nullable/@NonNull/@Contract.
     - Include a task to verify the build passes (./gradlew build) — NullAway nullness
       checks must stay green.
     - Add or update Testcontainers-backed integration tests for new behavior.
