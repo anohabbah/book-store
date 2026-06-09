@@ -109,7 +109,11 @@ context: |
       Flyway versioned migrations. Number a new migration as the next available V<N>__
       after the highest existing file in src/main/resources/db/migration; if that
       directory is empty or absent (as in the current scaffold), the first migration is
-      V1__ — otherwise do not assume V1__.
+      V1__ — otherwise do not assume V1__. The description part (after V<N>__) follows
+      Laravel (Eloquent) migration naming — snake_case verb phrases such as
+      create_<table>_table, add_<column>_to_<table>_table,
+      drop_<column>_from_<table>_table, rename_<old>_to_<new>_in_<table>_table
+      (e.g. V1__create_books_table.sql, V2__add_genre_to_books_table.sql).
     - When designing or implementing backend code (REST APIs, services, data access,
       caching, async, logging) consult the springboot-* skills: springboot-patterns
       for architecture/layering and springboot-security for authn/authz, validation,
@@ -123,20 +127,24 @@ context: |
 # Add custom rules for specific artifacts.
 rules:
   proposal:
-    - State which hexagonal package(s) the change touches (domain/<domain_name> and
+    - >-
+      State which hexagonal package(s) the change touches (domain/<domain_name> and
       infra/{spi,api}/<technology>/<domain_name>), or that it introduces a new domain.
       This project does not use Spring Modulith feature packaging (Modulith is
       runtime-only) — do not describe changes as Modulith modules.
   design:
-    - Place each new file in the hexagonal layout (domain/<domain_name>/ or
+    - >-
+      Place each new file in the hexagonal layout (domain/<domain_name>/ or
       infra/{spi,api}/<technology>/<domain_name>/); enumerate every concrete
       src/.../*.java path inline in the design body (a separate planned-files list does
       not by itself satisfy this), and confirm dependencies flow inward (infra →
       domain, never domain → infra).
-    - Declare every domain object, persistence entity, event payload, AND
+    - >-
+      Declare every domain object, persistence entity, event payload, AND
       request/response DTO as a Java record in that file list; note any class-instead-of
       -record with a documented reason (e.g. required mutability or a framework constraint).
-    - Note null-safety implications; all new packages need @NullMarked package-info.java.
+    - >-
+      Note null-safety implications; all new packages need @NullMarked package-info.java.
       For non-trivial nullness decisions, apply the jspecify-* skill that matches the
       decision: jspecify-user-guide for annotation placement (params/returns/generics/
       arrays); jspecify-spring-null-safety / jspecify-spring-framework-patterns when
@@ -145,23 +153,29 @@ rules:
       database-generated id or any field populated after construction (decide @Nullable
       vs @SuppressWarnings("NullAway.Init") explicitly); absence of @Contract does NOT by
       itself make the Spring jspecify skills inapplicable. Cite only the skill(s) actually used.
-    - Call out any new Flyway migration (named as the next available V<N>__ after the
-      highest existing migration, or V1__ if none exist yet) and the database
+    - >-
+      Call out any new Flyway migration (named as the next available V<N>__ after the
+      highest existing migration, or V1__ if none exist yet, with a Laravel-style
+      snake_case description such as create_<table>_table or
+      add_<column>_to_<table>_table) and the database
       tables/columns it adds; apply
       postgres-patterns / supabase-postgres-best-practices to schema and indexing
       decisions, and springboot-patterns / springboot-security to API and service design.
   tasks:
-    - Generate tasks test-first, following the tdd skill (the red-green-refactor loop):
+    - >-
+      Generate tasks test-first, following the tdd skill (the red-green-refactor loop):
       write a failing test, make it pass, then refactor. Use the tdd skill specifically,
       not superpowers:test-driven-development.
-    - When a task adds or annotates null-safe code, first consult the jspecify-* skill
+    - >-
+      When a task adds or annotates null-safe code, first consult the jspecify-* skill
       that fits before placing @Nullable/@NonNull/@Contract: jspecify-user-guide for
       annotation placement; jspecify-spring-null-safety / jspecify-spring-framework-patterns
       for Spring @Contract and inference heuristics — and required when an entity/aggregate
       has a database-generated id or a field populated after construction (the @Nullable
       vs @SuppressWarnings("NullAway.Init") decision applies even without @Contract). Cite
       only the skill(s) actually used.
-    - When a task null-marks a whole package, structure it as a NullAway-verified loop
+    - >-
+      When a task null-marks a whole package, structure it as a NullAway-verified loop
       and state EACH step in the task:
         (a) annotate with JSpecify + @Contract guided by the jspecify-* skills (cite only
             the jspecify-* skills actually exercised — do not auto-cite all three);
@@ -174,9 +188,11 @@ rules:
         (f) for any dependency whose nullness is wrong, note it explicitly and do not
             silently mutate it.
       Steps (e) and (f) are mandatory even when few errors occur.
-    - When a task implements backend or database code, apply the matching skill first:
+    - >-
+      When a task implements backend or database code, apply the matching skill first:
       springboot-patterns / springboot-security for Spring code, postgres-patterns /
       supabase-postgres-best-practices for SQL, schema, and migrations.
-    - Include a task to verify the build passes (./gradlew build) — NullAway nullness
+    - >-
+      Include a task to verify the build passes (./gradlew build) — NullAway nullness
       checks must stay green.
     - Add or update Testcontainers-backed integration tests for new behavior.
