@@ -2,19 +2,42 @@ schema: spec-driven
 
 # Project context (optional)
 # This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Project: book-store — a Spring Modulith bookstore backend (group dev.abbah, base
+  package dev.abbah.bookstore). Currently a fresh scaffold; no business modules yet.
+
+  Tech stack:
+    - Java 25 (Gradle toolchain), Gradle 9.5.1, Groovy DSL (build.gradle)
+    - Spring Boot 4.0.x, Spring Modulith 2.0.x (starter-core + starter-jdbc)
+    - Web: Spring Web MVC, Bean Validation, springdoc-openapi (Swagger UI)
+    - Persistence: Spring Data JDBC (NOT JPA/Hibernate), Flyway migrations, PostgreSQL
+    - Mapping/boilerplate: MapStruct 1.7, Lombok (with lombok-mapstruct-binding)
+    - Observability: Spring Boot Actuator + OpenTelemetry, Spring Modulith
+      observability; Grafana OTel-LGTM stack via Testcontainers in tests
+    - Testing: JUnit 5, Spring Boot Test, Testcontainers (PostgreSQL + Grafana LGTM)
+
+  Conventions:
+    - Conventional Commits (e.g. build:, chore:, feat:, fix:).
+    - Null-safety is enforced at compile time: NullAway in JSpecify mode with
+      onlyNullMarked = true; nullness violations FAIL the build. Every package needs
+      a package-info.java annotated @NullMarked (org.jspecify.annotations). Main
+      types must be explicitly null-marked (RequireExplicitNullMarking). Use
+      org.jspecify @Nullable/@NonNull — never JSR-305 or org.springframework.lang.
+    - Indentation is 2 spaces.
+    - Organize features as Spring Modulith application modules (one top-level package
+      per module under dev.abbah.bookstore); respect module boundaries.
+    - Prefer Spring Data JDBC aggregates and repositories; schema changes go through
+      Flyway versioned migrations.
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+rules:
+  proposal:
+    - State which Spring Modulith module(s) the change touches, or that it adds a new one.
+  design:
+    - Note null-safety implications; all new packages need @NullMarked package-info.java.
+    - Call out any new Flyway migration and the database tables/columns it adds.
+  tasks:
+    - Include a task to verify the build passes (./gradlew build) — NullAway nullness
+      checks must stay green.
+    - Add or update Testcontainers-backed integration tests for new behavior.
