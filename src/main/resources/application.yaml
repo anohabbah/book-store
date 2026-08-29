@@ -4,6 +4,13 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+    apiversion:
+      use:
+        path-segment: 0
+      default: "1"
+      required: false
+      supported:
+        - "1"
   threads:
     virtual:
       enabled: true

@@ -8,21 +8,23 @@ Flyway/Postgres) end-to-end against a thin, low-risk slice.
 
 ## What Changes
 
-- Introduce a new `catalog` domain: a `Book` bibliographic record (id, isbn, title,
-  author, publishedYear, genre) with **no** stock/availability/copies fields — those
-  belong to the future `inventory` and `rental` contexts.
-- Expose full CRUD over a REST API at `/books`:
-  - `POST /books` — create (201 + `Location`; 400 invalid; 409 duplicate ISBN)
-  - `GET /books/{id}` — fetch one (200 / 404)
-  - `GET /books` — paginated list with optional `title` (contains), `author`, `isbn` filters
-  - `PUT /books/{id}` — full replace (200 / 400 / 404)
-  - `DELETE /books/{id}` — remove (204 / 404)
+- Introduce a new `book` domain (capability `catalog`): a `Book` bibliographic record
+  (id, isbn, title, author, publishedYear, genre) with **no** stock/availability/copies
+  fields — those belong to the future `inventory` and `rental` contexts.
+- Expose full CRUD over a REST API at `/v1/books`:
+  - `POST /v1/books` — create (201 + `Location`; 400 invalid; 409 duplicate ISBN)
+  - `GET /v1/books/{id}` — fetch one (200 / 404)
+  - `GET /v1/books` — paginated list with optional `title` (contains), `author`, `isbn` filters
+    (paging, sorting, and the response envelope are Spring Data's `Pageable`/`PagedModel`,
+    not a bespoke pagination type)
+  - `PUT /v1/books/{id}` — full replace (200 / 400 / 404)
+  - `DELETE /v1/books/{id}` — remove (204 / 404)
 - Enforce **ISBN uniqueness** as the one real business rule, surfaced as `409 Conflict`.
 - Add the first Flyway migration (`V1__create_books_table.sql` — Laravel-style
   description per project convention) creating a `books` table with a unique
   constraint on `isbn`.
-- Wire the domain through the project's hexagonal layout: `domain/catalog/`,
-  `infra/spi/db/catalog/`, `infra/api/rest/catalog/`.
+- Wire the domain through the project's hexagonal layout: `domain/book/`,
+  `infra/spi/db/book/`, `infra/api/rest/book/`.
 
 ## Capabilities
 
@@ -37,9 +39,10 @@ Flyway/Postgres) end-to-end against a thin, low-risk slice.
 ## Impact
 
 - **New packages** (each gets a `@NullMarked` `package-info.java`):
-  - `domain/catalog/` — `Book`, `CatalogService`, `BookRepository` (driven port)
-  - `infra/spi/db/catalog/` — `BookEntity`, `BookMapper`, `BookDbAdapter`
-  - `infra/api/rest/catalog/` — `BookResource`, `BookDto`s, `BookRestMapper`
+  - `domain/book/` — `Book`, `BookUsecase`, `BookPort` (driven port)
+  - `infra/spi/db/book/` — `BookEntity`, `BookEntityMapper`, `BookAdapter`
+  - `infra/api/rest/book/` — `BookResource`, `CreateBookRequest`/`BookDto`,
+    `BookDtoMapper`
 - **Database**: new `books` table via
   `src/main/resources/db/migration/V1__create_books_table.sql`
   (first migration; directory is currently empty). `UNIQUE(isbn)`.
