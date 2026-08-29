@@ -1,0 +1,16 @@
+spring:
+  docker:
+    compose:
+      enabled: true
+  web:
+    error:
+      include-stacktrace: always
+      include-message: always
+      include-binding-errors: always
+debug: true
+bootui:
+  path: "/v1/bootui"
+  mcp:
+    enabled: on
+scalar:
+  path: "/v1/scalar"
