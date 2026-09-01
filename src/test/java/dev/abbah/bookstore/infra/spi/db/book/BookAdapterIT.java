@@ -5,9 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import dev.abbah.bookstore.TestcontainersConfiguration;
 import dev.abbah.bookstore.domain.book.Book;
+import dev.abbah.bookstore.domain.book.BookFilter;
 import dev.abbah.bookstore.domain.book.BookPort;
 import dev.abbah.bookstore.domain.book.DuplicateIsbnException;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +46,11 @@ class BookAdapterIT {
 
   private static Pageable byId(int page, int size) {
     return PageRequest.of(page, size, Sort.by("id"));
+  }
+
+  private static BookFilter filter(
+      @Nullable String title, @Nullable String author, @Nullable String isbn) {
+    return new BookFilter(title, author, isbn);
   }
 
   @Test
@@ -86,7 +93,7 @@ class BookAdapterIT {
     save("isbn-b", "Dune Messiah", "Frank Herbert");
     save("isbn-c", "Hyperion", "Dan Simmons");
 
-    Page<Book> page = bookPort.findAll("dune", null, null, byId(0, 10));
+    Page<Book> page = bookPort.findAll(filter("dune", null, null), byId(0, 10));
 
     assertThat(page.getContent()).extracting(Book::title).containsExactly("Dune", "Dune Messiah");
     assertThat(page.getTotalElements()).isEqualTo(2);
@@ -97,11 +104,11 @@ class BookAdapterIT {
     save("isbn-a", "Dune", "Frank Herbert");
     save("isbn-b", "Hyperion", "Dan Simmons");
 
-    assertThat(bookPort.findAll(null, "Dan Simmons", null, byId(0, 10)).getContent())
+    assertThat(bookPort.findAll(filter(null, "Dan Simmons", null), byId(0, 10)).getContent())
         .extracting(Book::isbn).containsExactly("isbn-b");
-    assertThat(bookPort.findAll(null, null, "isbn-a", byId(0, 10)).getContent())
+    assertThat(bookPort.findAll(filter(null, null, "isbn-a"), byId(0, 10)).getContent())
         .extracting(Book::isbn).containsExactly("isbn-a");
-    assertThat(bookPort.findAll(null, "Frank", null, byId(0, 10)).getContent()).isEmpty();
+    assertThat(bookPort.findAll(filter(null, "Frank", null), byId(0, 10)).getContent()).isEmpty();
   }
 
   @Test
@@ -110,7 +117,7 @@ class BookAdapterIT {
     save("isbn-b", "Dune Messiah", "Frank Herbert");
     save("isbn-c", "Dune: The Graphic Novel", "Brian Herbert");
 
-    Page<Book> page = bookPort.findAll("dune", "Frank Herbert", null, byId(0, 10));
+    Page<Book> page = bookPort.findAll(filter("dune", "Frank Herbert", null), byId(0, 10));
 
     assertThat(page.getContent()).extracting(Book::isbn).containsExactly("isbn-a", "isbn-b");
   }
@@ -121,7 +128,7 @@ class BookAdapterIT {
     save("isbn-b", "Dune Messiah", "Frank Herbert");
     save("isbn-c", "Children of Dune", "Frank Herbert");
 
-    Page<Book> secondPage = bookPort.findAll(null, null, null, byId(1, 2));
+    Page<Book> secondPage = bookPort.findAll(filter(null, null, null), byId(1, 2));
 
     assertThat(secondPage.getContent()).hasSize(1);
     assertThat(secondPage.getNumber()).isEqualTo(1);
@@ -137,7 +144,7 @@ class BookAdapterIT {
     save("isbn-c", "Dune Messiah", "Frank Herbert");
 
     Page<Book> page = bookPort.findAll(
-        null, null, null, PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "title")));
+        filter(null, null, null), PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "title")));
 
     assertThat(page.getContent()).extracting(Book::title)
         .containsExactly("Dune Messiah", "Dune", "Children of Dune");

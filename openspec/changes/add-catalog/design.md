@@ -158,10 +158,14 @@ end-to-end: `GET /v1/books?page=&size=&sort=&title=&author=&isbn=` binds to a re
 stable envelope (`content` + `page:{size,number,totalElements,totalPages}`), so no bespoke
 response record is maintained. Filters combine conjunctively. Because Spring Data JDBC has
 no Specifications *and its string-based `@Query` cannot accept a `Pageable`/`Sort`/`Limit`*,
-the adapter builds a programmatic `Criteria` and runs it through `JdbcAggregateOperations`:
-`title` uses `Criteria.where("title").like("%…%").ignoreCase(true)`, `author`/`isbn` use
-equality; `Query.with(pageable)` applies limit/offset/sort and `PageableExecutionUtils`
-assembles the `Page`. `sort` is client-controlled, so `BookResource` rejects any property
+the adapter builds a programmatic `Criteria` and runs it through `JdbcAggregateOperations`;
+`Query.with(pageable)` applies limit/offset/sort and `PageableExecutionUtils` assembles the
+`Page`.
+
+The filters themselves are not an `if` chain in the adapter but a `BookCriterion` enum, one
+constant per filter, each a `Criterion<BookFilter>` — a function from the filter to an
+`Optional<Criteria>` (see D9). `title` is a case-insensitive substring match, `author`/`isbn`
+are equality. `sort` is client-controlled, so `BookResource` rejects any property
 outside the book's own (`id`, `isbn`, `title`, `author`, `publishedYear`, `genre`) with a
 `400` rather than letting Spring Data fail with a `500`. Errors are RFC 7807 `ProblemDetail`
 via `BookExceptionHandler` (`spring.mvc.problemdetails.enabled` defaults on in Boot 4):
@@ -200,8 +204,7 @@ uniqueness backstop (D4). `BookEntity` field names map to snake_case columns
 The port and the use case speak `org.springframework.data.domain.Page`/`Pageable` directly:
 
 ```java
-Page<Book> findAll(@Nullable String title, @Nullable String author,
-                   @Nullable String isbn, Pageable pageable);   // BookPort
+Page<Book> findAll(BookFilter filter, Pageable pageable);   // BookPort
 ```
 
 The alternative — a hand-rolled `BookPage(List<Book>, int page, int size, long
@@ -218,6 +221,59 @@ rest of `org.springframework.data..` (repositories, JDBC, relational mapping) al
 web, servlet, JPA, and Jackson — so `BookEntity`, `BookCrudRepository`, and
 `JdbcAggregateOperations` remain firmly out of the domain.
 
+### D9 — Filters are a `BookFilter` value object folded through a `BookCriterion` enum
+
+The listing filters travel as one `domain/book/BookFilter` record (`title`, `author`, `isbn`,
+all `@Nullable`) rather than as positional arguments. The positional list was the real cost of
+the original shape: adding a filter meant editing `BookResource`, `BookUsecase`, `BookPort`,
+and `BookAdapter` plus every test call site. With the record, adding a filter is one field on
+`BookFilter` plus one constant on `BookCriterion`; no signature between the resource and the
+adapter moves.
+
+`BookFilter` is domain-side and technology-free. The criteria are not: an enum producing
+`org.springframework.data.relational.core.query.Criteria` cannot live in `domain/` without
+breaking `ArchitectureTest.domain_is_free_of_infrastructure_technology`. So the seam splits —
+`BookFilter` in `domain/book`, and `Criterion` / `CriterionBuilder` (domain-agnostic) in
+`infra/spi/db` with `BookCriterion` beside the adapter in `infra/spi/db/book`.
+
+`BookAdapter.findAll` folds the constants:
+
+```java
+Criteria criteria = Stream.of(BookCriterion.values())
+    .map(criterion -> criterion.toCriteria(filter))
+    .flatMap(Optional::stream)
+    .reduce(Criteria::and)
+    .orElseGet(Criteria::empty);
+```
+
+`Optional.empty()` is the **single** representation of "this criterion does not apply";
+`Criteria.empty()` appears once, as the identity of the fold, never as a sentinel inside a
+criterion. `CriterionBuilder` exists because Spring Data's relational vocabulary is awkward:
+there is no `containsIgnoreCase`, only `like("%v%")` followed by `ignoreCase(true)` on the
+resulting criteria. It names that idiom once and takes its column from a
+`TypedPropertyPath` — `where(path(BookEntity::title))` — so renaming an accessor moves the
+column with it instead of leaving a stale string literal. (Spring Data 4.1's typed paths
+resolve to the property's dot path, so the default `NamingStrategy` still maps
+`publishedYear` → `published_year` exactly as the old string form did.)
+
+`BookFilter`'s compact constructor normalizes blank and whitespace-only values to `null`, once,
+for every criterion. Without it `?genre=` on a nullable column would filter on the empty string
+and return nothing, rather than reading as "unfiltered".
+
+- Alternative considered: binding `BookFilter` at the web edge with `@ParameterObject` —
+  rejected; it would put a domain record on the HTTP surface and change the documented query
+  parameters. `BookResource` keeps its three `@RequestParam`s and constructs the filter.
+- Honest trade: for three filters this is *more* code than the `if` chain it replaced. It pays
+  off at around five or six filters, or at the first rule that reads two filter fields at once.
+  Accepted deliberately, against a known extension horizon (more scalar filters, plus ranges
+  and sets such as `publishedYearFrom`/`To` and `genre in (…)`) — not an open-ended
+  client-composed query language.
+
+Because a criterion receives the *whole* filter, one can read more than one field. That is the
+capability's sharp edge: a rule branching on a second field is discoverable only by grep.
+**Convention:** a criterion reading more than one filter field must carry a comment naming the
+other field.
+
 ## Risks / Trade-offs
 
 - **`ILIKE '%term%'` substring filter does not use the btree index → full scan on large
@@ -230,9 +286,10 @@ web, servlet, JPA, and Jackson — so `BookEntity`, `BookCrudRepository`, and
   constraint and adapter-level translation to `409` (D4); no correctness gap, only a
   redundant pre-check for a friendlier common-path error.
 - **Spring Data JDBC lacks dynamic Specifications**, so combined filters need explicit
-  query handling. → The filter set is fixed and small (title/author/isbn); a programmatic
-  `Criteria` executed through `JdbcAggregateOperations` covers it, and unlike a string
-  `@Query` it accepts the request's `Pageable` (D6).
+  query handling. → A programmatic `Criteria` executed through `JdbcAggregateOperations`
+  covers it, and unlike a string `@Query` it accepts the request's `Pageable` (D6). The
+  `BookCriterion` fold (D9) is what keeps that explicit handling from growing an `if` per
+  filter.
 - **The domain now depends on `spring-data-commons`.** → Accepted and fenced by ArchUnit
   (D8): only `org.springframework.data.domain..` is allowed through.
 

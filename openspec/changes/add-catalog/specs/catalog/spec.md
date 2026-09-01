@@ -45,7 +45,8 @@ The system SHALL return a paginated list of books via `GET /v1/books`, accepting
 envelope (a `content` array plus a `page` object holding `size`, `number`, `totalElements`,
 and `totalPages`). It SHALL support optional filtering by `title` (case-insensitive
 substring match), `author` (exact match), and `isbn` (exact match). When multiple filters
-are supplied they SHALL be combined conjunctively (AND).
+are supplied they SHALL be combined conjunctively (AND). A filter parameter supplied with a
+blank or whitespace-only value SHALL be treated as absent.
 
 #### Scenario: Paginated listing
 
@@ -72,6 +73,12 @@ are supplied they SHALL be combined conjunctively (AND).
 
 - **WHEN** a client GETs `/v1/books?isbn=<isbn>`
 - **THEN** the system returns the matching book, or an empty page if none matches
+
+#### Scenario: Blank filter parameter
+
+- **WHEN** a client GETs `/v1/books?title=`
+- **THEN** the system ignores the `title` filter and returns all books, rather than matching
+  on the empty string
 
 ### Requirement: Replace a book
 

@@ -1,11 +1,12 @@
 package dev.abbah.bookstore.infra.spi.db.book;
 
 import dev.abbah.bookstore.domain.book.Book;
+import dev.abbah.bookstore.domain.book.BookFilter;
 import dev.abbah.bookstore.domain.book.BookPort;
 import dev.abbah.bookstore.domain.book.DuplicateIsbnException;
 import java.util.List;
 import java.util.Optional;
-import org.jspecify.annotations.Nullable;
+import java.util.stream.Stream;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -68,18 +69,14 @@ class BookAdapter implements BookPort {
   // applies them instead, and PageableExecutionUtils skips the count query when the page
   // already tells us the total.
   @Override
-  public Page<Book> findAll(
-      @Nullable String title, @Nullable String author, @Nullable String isbn, Pageable pageable) {
-    Criteria criteria = Criteria.empty();
-    if (title != null) {
-      criteria = criteria.and(Criteria.where("title").like("%" + title + "%").ignoreCase(true));
-    }
-    if (author != null) {
-      criteria = criteria.and(Criteria.where("author").is(author));
-    }
-    if (isbn != null) {
-      criteria = criteria.and(Criteria.where("isbn").is(isbn));
-    }
+  public Page<Book> findAll(BookFilter filter, Pageable pageable) {
+    // Criteria.empty() is the identity of the fold and appears only here; a criterion that does
+    // not apply says so with Optional.empty().
+    Criteria criteria = Stream.of(BookCriterion.values())
+        .map(criterion -> criterion.toCriteria(filter))
+        .flatMap(Optional::stream)
+        .reduce(Criteria::and)
+        .orElseGet(Criteria::empty);
     Query query = Query.query(criteria);
     List<Book> content = jdbcAggregateOperations.findAll(query.with(pageable), BookEntity.class)
         .stream()

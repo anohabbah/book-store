@@ -153,3 +153,49 @@
   old names cannot linger) and confirm zero NullAway errors and every ArchUnit rule green.
   Verify the new guard actually bites by temporarily renaming `BookUsecase` to
   `CatalogUsecase` and confirming `role_types_are_named_after_their_package` fails.
+
+## 8. Refactor: a `BookFilter` + `BookCriterion` seam for listing filters
+
+- [x] 8.1 Spike `Criteria.where(TypedPropertyPath)` (new in Spring Data 4.1) against the real
+  schema before committing to it: confirm a camelCase property reference resolves to the
+  snake_case column, so `publishedYear` → `published_year` — the first future filter that
+  would expose a mismatch. Confirmed: `where(path)` delegates to `where(path.toDotPath())`,
+  so the property name reaches `QueryMapper` exactly as the old string literal did.
+- [x] 8.2 (RED) `BookFilterTest`: blank, whitespace-only, and `null` all normalize to `null`;
+  non-blank values pass through untouched.
+- [x] 8.3 (GREEN) Add `domain/book/BookFilter.java` — a record of `@Nullable String title,
+  author, isbn` with a normalizing compact constructor. **No Spring Data imports**: the
+  criteria it feeds are infrastructure, the filter is not (design D9).
+- [x] 8.4 Add `infra/spi/db/package-info.java` (`@NullMarked`) for the new package.
+- [x] 8.5 (RED) `CriterionBuilderTest` covering **all six** operations — `is`,
+  `containsIgnoreCase`, `in`, `gte`, `lte`, `between` — each absent for a null value and
+  building the right `Criteria` otherwise. The range and set operations have no production
+  caller yet; without this test they would be dead untested code.
+- [x] 8.6 (GREEN) Add `infra/spi/db/Criterion.java` (`Optional<Criteria> toCriteria(F)`) and
+  `infra/spi/db/CriterionBuilder.java`. Both are domain-agnostic, hence `infra/spi/db/` rather
+  than `infra/spi/db/book/`. `containsIgnoreCase` is `like("%v%")` + `ignoreCase(true)` —
+  Spring Data relational has no such operation of its own.
+- [x] 8.7 Add `infra/spi/db/book/BookCriterion.java`: `enum BookCriterion implements
+  Criterion<BookFilter>` with `TITLE`, `AUTHOR`, `ISBN`, each holding a function from the
+  filter to an `Optional<Criteria>`.
+- [x] 8.8 Rewrite `BookAdapter.findAll` as the fold over `BookCriterion.values()`, keeping the
+  `Query`/`PageableExecutionUtils` tail and the comment explaining why `Criteria` beats a
+  string `@Query`. `Criteria.empty()` is the identity of the fold and appears nowhere else.
+- [x] 8.9 Change `BookPort.findAll` and `BookUsecase.list` to `(BookFilter filter, Pageable
+  pageable)`; `BookResource.list` keeps its three `@RequestParam`s and constructs the filter,
+  so the OpenAPI surface is unchanged.
+- [x] 8.10 Migrate the test call sites: a `filter(title, author, isbn)` helper in
+  `BookAdapterIT` beside `byId(page, size)` (7 call sites), and the `InMemoryBookPort.findAll`
+  override in `BookUsecaseTest`. **Every existing assertion passes unchanged** — that is the
+  proof the refactor preserves behaviour.
+- [x] 8.11 (GREEN) `BookResourceIT`: add a case asserting `GET /v1/books?title=` returns all
+  books. Note this passes before the change too — `title` is `not null`, so `LIKE '%%'` already
+  matched every row; it guards the contract, while `BookFilterTest` is what actually pins the
+  normalization.
+- [x] 8.12 Confirm `ArchitectureTest` passes **unmodified** — in particular
+  `domain_is_free_of_infrastructure_technology`, which is the proof `BookFilter` stayed
+  technology-free and the criteria types are correctly placed outside the domain.
+- [x] 8.13 Document it: `CONTEXT.md` at the repo root gains the **Book Filter** term (glossary
+  only — `Criterion` and `CriterionBuilder` are implementation and stay out); design D6 and D8
+  are corrected and a new **D9** carries the rationale; the catalog spec gains a blank-filter
+  scenario.

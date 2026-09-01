@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -118,9 +117,10 @@ class BookUsecaseTest {
     }
 
     @Override
-    public Page<Book> findAll(
-        @Nullable String title, @Nullable String author, @Nullable String isbn,
-        Pageable pageable) {
+    public Page<Book> findAll(BookFilter filter, Pageable pageable) {
+      String title = filter.title();
+      String author = filter.author();
+      String isbn = filter.isbn();
       List<Book> books = store.values().stream()
           .filter(b -> title == null || b.title().toLowerCase().contains(title.toLowerCase()))
           .filter(b -> author == null || b.author().equals(author))

@@ -1,7 +1,6 @@
 package dev.abbah.bookstore.domain.book;
 
 import java.util.Optional;
-import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -12,8 +11,7 @@ public interface BookPort {
 
   Optional<Book> findById(long id);
 
-  Page<Book> findAll(
-      @Nullable String title, @Nullable String author, @Nullable String isbn, Pageable pageable);
+  Page<Book> findAll(BookFilter filter, Pageable pageable);
 
   boolean existsByIsbn(String isbn);
 

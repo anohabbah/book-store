@@ -170,6 +170,18 @@ class BookResourceIT {
     assertThat(result).bodyJson().extractingPath("$.content[0].title").isEqualTo("Dune");
   }
 
+  /** A blank filter parameter reads as "not filtering", not as "match the empty string". */
+  @Test
+  void listTreatsABlankFilterParameterAsAbsent() {
+    createBook("isbn-a", "Dune", "Frank Herbert");
+    createBook("isbn-b", "Hyperion", "Dan Simmons");
+
+    MvcTestResult result = mvc.get().uri("/v1/books?title=").exchange();
+
+    assertThat(result).hasStatusOk();
+    assertThat(result).bodyJson().extractingPath("$.page.totalElements").isEqualTo(2);
+  }
+
   @Test
   void listFiltersByExactIsbn() {
     createBook("isbn-a", "Dune", "Frank Herbert");

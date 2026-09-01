@@ -1,5 +1,6 @@
 package dev.abbah.bookstore.infra.api.rest.book;
 
+import dev.abbah.bookstore.domain.book.BookFilter;
 import dev.abbah.bookstore.domain.book.BookUsecase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -70,8 +71,10 @@ class BookResource {
       @RequestParam(required = false) @Nullable String isbn,
       @ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable) {
     rejectUnknownSortProperties(pageable.getSort());
+    // BookFilter is constructed here rather than bound with @ParameterObject: binding it would
+    // put a domain record on the web edge and change the documented query parameters.
     return new PagedModel<>(
-        bookUsecase.list(title, author, isbn, pageable).map(bookDtoMapper::toDto));
+        bookUsecase.list(new BookFilter(title, author, isbn), pageable).map(bookDtoMapper::toDto));
   }
 
   // An unmapped sort property would blow up inside Spring Data as a 500; report it as the
