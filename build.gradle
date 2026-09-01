@@ -1,5 +1,7 @@
 plugins {
     id 'java'
+    id 'jacoco'
+    id 'org.sonarqube' version '7.4.0.8496'
     id 'org.springframework.boot' version '4.1.1'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'net.ltgt.errorprone' version '5.1.1'
@@ -86,4 +88,27 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    finalizedBy tasks.named('jacocoTestReport')
+}
+
+jacoco {
+    toolVersion = '0.8.15'                   // 0.8.14+ required to read Java 25 class files
+}
+
+tasks.named('jacocoTestReport') {
+    reports {
+        xml.required = true                  // the only format SonarQube consumes
+        html.required = false
+        csv.required = false
+    }
+}
+
+sonar {
+    properties {
+        // Sources, test sources, binaries, dependency jars, JUnit reports and the
+        // JaCoCo XML are all derived from the Gradle model by the plugin.
+        // Server URL and credentials come from SONAR_HOST_URL / SONAR_TOKEN.
+        property 'sonar.projectKey', 'book-store'
+        property 'sonar.projectName', 'Book Store'
+    }
 }
