@@ -103,6 +103,19 @@ tasks.named('jacocoTestReport') {
     }
 }
 
+tasks.named('jacocoTestCoverageVerification') {
+    violationRules {
+        rule {
+            limit { counter = 'LINE'; minimum = 0.80 }
+            limit { counter = 'BRANCH'; minimum = 0.80 }
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('jacocoTestCoverageVerification')
+}
+
 sonar {
     properties {
         // Sources, test sources, binaries, dependency jars, JUnit reports and the
