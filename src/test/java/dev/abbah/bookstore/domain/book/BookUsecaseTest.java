@@ -38,9 +38,10 @@ class BookUsecaseTest {
   @Test
   void createWithExistingIsbnThrowsDuplicateIsbn() {
     service.create(dune("978-0441013593"));
+    Book duplicate = dune("978-0441013593");
 
     assertThatExceptionOfType(DuplicateIsbnException.class)
-        .isThrownBy(() -> service.create(dune("978-0441013593")));
+        .isThrownBy(() -> service.create(duplicate));
   }
 
   @Test
@@ -57,17 +58,21 @@ class BookUsecaseTest {
 
   @Test
   void replaceMissingIdThrowsBookNotFound() {
+    Book replacement = dune("978-0441013593");
+
     assertThatExceptionOfType(BookNotFoundException.class)
-        .isThrownBy(() -> service.replace(42L, dune("978-0441013593")));
+        .isThrownBy(() -> service.replace(42L, replacement));
   }
 
   @Test
   void replaceWithAnotherBooksIsbnThrowsDuplicateIsbn() {
     service.create(dune("isbn-a"));
     Book other = service.create(new Book(null, "isbn-b", "Hyperion", "Dan Simmons", 1989, null));
+    long otherId = idOf(other);
+    Book takenIsbn = dune("isbn-a");
 
     assertThatExceptionOfType(DuplicateIsbnException.class)
-        .isThrownBy(() -> service.replace(idOf(other), dune("isbn-a")));
+        .isThrownBy(() -> service.replace(otherId, takenIsbn));
   }
 
   @Test

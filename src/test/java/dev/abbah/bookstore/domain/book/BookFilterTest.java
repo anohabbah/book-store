@@ -3,30 +3,17 @@ package dev.abbah.bookstore.domain.book;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class BookFilterTest {
 
-  @Test
-  void blankValuesNormalizeToNull() {
-    BookFilter filter = new BookFilter("", "", "");
-
-    assertThat(filter.title()).isNull();
-    assertThat(filter.author()).isNull();
-    assertThat(filter.isbn()).isNull();
-  }
-
-  @Test
-  void whitespaceOnlyValuesNormalizeToNull() {
-    BookFilter filter = new BookFilter("   ", "\t", "\n ");
-
-    assertThat(filter.title()).isNull();
-    assertThat(filter.author()).isNull();
-    assertThat(filter.isbn()).isNull();
-  }
-
-  @Test
-  void nullValuesStayNull() {
-    BookFilter filter = new BookFilter(null, null, null);
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = {"", "   ", "\t", "\n "})
+  void blankOrNullValuesNormalizeToNull(String value) {
+    BookFilter filter = new BookFilter(value, value, value);
 
     assertThat(filter.title()).isNull();
     assertThat(filter.author()).isNull();
