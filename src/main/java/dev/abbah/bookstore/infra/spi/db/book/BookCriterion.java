@@ -18,14 +18,14 @@ import org.springframework.data.relational.core.query.Criteria;
  */
 enum BookCriterion implements Criterion<BookFilter> {
 
-  TITLE(filter ->
-      CriterionBuilder.where(path(BookEntity::title)).containsIgnoreCase(filter.title())),
+  TITLE(filter -> CriterionBuilder.where(path(BookEntity::title))
+                                  .containsIgnoreCase(filter.title())),
 
-  AUTHOR(filter ->
-      CriterionBuilder.where(path(BookEntity::author)).is(filter.author())),
+  AUTHOR(filter -> CriterionBuilder.where(path(BookEntity::author))
+                                   .is(filter.author())),
 
-  ISBN(filter ->
-      CriterionBuilder.where(path(BookEntity::isbn)).is(filter.isbn()));
+  ISBN(filter -> CriterionBuilder.where(path(BookEntity::isbn))
+                                 .is(filter.isbn()));
 
   private final Criterion<BookFilter> criterion;
 
