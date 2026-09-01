@@ -10,6 +10,8 @@ class BookStoreApplicationTests {
 
   @Test
   void contextLoads() {
+    // No body: the assertion is that the application context starts, which @SpringBootTest
+    // already fails the test on.
   }
 
 }
