@@ -2,6 +2,7 @@ package dev.abbah.bookstore.infra.spi.db.book;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.abbah.bookstore.TestcontainersConfiguration;
 import dev.abbah.bookstore.domain.book.Book;
@@ -15,10 +16,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.relational.core.conversion.DbActionExecutionException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 @Import(TestcontainersConfiguration.class)
@@ -87,6 +90,17 @@ class BookAdapterIT {
         .isThrownBy(() -> save("isbn-a", "Dune (again)", "Frank Herbert"));
   }
 
+  // Only the uq_books_isbn violation is translated: every other integrity failure has to reach
+  // the caller as-is rather than be mistaken for a duplicate ISBN.
+  @Test
+  void otherIntegrityViolationsPropagateUnchanged() {
+    String titleLongerThanTheColumn = "x".repeat(513);
+
+    assertThatThrownBy(() -> save("isbn-a", titleLongerThanTheColumn, "Frank Herbert"))
+        .isNotInstanceOf(DuplicateIsbnException.class)
+        .isInstanceOfAny(DataIntegrityViolationException.class, DbActionExecutionException.class);
+  }
+
   @Test
   void titleFilterMatchesCaseInsensitiveSubstring() {
     save("isbn-a", "Dune", "Frank Herbert");
@@ -135,6 +149,21 @@ class BookAdapterIT {
     assertThat(secondPage.getSize()).isEqualTo(2);
     assertThat(secondPage.getTotalElements()).isEqualTo(3);
     assertThat(secondPage.getTotalPages()).isEqualTo(2);
+  }
+
+  // A full page cannot tell PageableExecutionUtils the total, so this is the case that actually
+  // runs the count query behind findAll.
+  @Test
+  void findAllCountsTheTotalWhenThePageIsFull() {
+    save("isbn-a", "Dune", "Frank Herbert");
+    save("isbn-b", "Dune Messiah", "Frank Herbert");
+    save("isbn-c", "Children of Dune", "Frank Herbert");
+
+    Page<Book> firstPage = bookPort.findAll(filter(null, null, null), byId(0, 2));
+
+    assertThat(firstPage.getContent()).hasSize(2);
+    assertThat(firstPage.getTotalElements()).isEqualTo(3);
+    assertThat(firstPage.getTotalPages()).isEqualTo(2);
   }
 
   @Test
