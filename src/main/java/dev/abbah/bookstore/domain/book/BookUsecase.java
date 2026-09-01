@@ -16,6 +16,7 @@ public class BookUsecase {
     this.bookPort = bookPort;
   }
 
+  @Transactional
   public Book create(Book book) {
     if (bookPort.existsByIsbn(book.isbn())) {
       throw new DuplicateIsbnException(book.isbn());
@@ -32,6 +33,7 @@ public class BookUsecase {
     return bookPort.findAll(filter, pageable);
   }
 
+  @Transactional
   public Book replace(long id, Book book) {
     if (!bookPort.existsById(id)) {
       throw new BookNotFoundException(id);
@@ -43,6 +45,7 @@ public class BookUsecase {
         new Book(id, book.isbn(), book.title(), book.author(), book.publishedYear(), book.genre()));
   }
 
+  @Transactional
   public void delete(long id) {
     if (!bookPort.existsById(id)) {
       throw new BookNotFoundException(id);
