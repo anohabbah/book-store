@@ -1,9 +1,9 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '4.0.8'
+    id 'org.springframework.boot' version '4.1.1'
     id 'io.spring.dependency-management' version '1.1.7'
-    id 'net.ltgt.errorprone' version '5.1.0'
-    id 'net.ltgt.nullaway' version '3.0.0'
+    id 'net.ltgt.errorprone' version '5.1.1'
+    id 'net.ltgt.nullaway' version '3.2.0'
 }
 
 group = 'dev.abbah'
@@ -58,7 +58,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.flywaydb:flyway-database-postgresql'
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-scalar:3.0.3'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-scalar:3.1.0'
     implementation 'org.springframework.modulith:spring-modulith-starter-core'
     implementation 'org.springframework.modulith:spring-modulith-starter-jdbc'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
